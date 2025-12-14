@@ -11,6 +11,15 @@ const router = createRouter({
       component: DefaultLayout,
       children: [
         {
+          path: '',
+          redirect: 'home',
+        },
+        {
+          path: 'home',
+          name: 'pages-home',
+          component: () => import('@/views/pages/HomeView.vue'),
+        },
+        {
           path: 'space/apps',
           name: 'space-apps-list',
           component: () => import('@/views/space/apps/ListView.vue'),
@@ -31,12 +40,12 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to, from) => {
-  if (!isLogin() && to.name != 'auth-login') {
-    return { name: 'auth-login' }
-  }
-  console.log('to:', to)
-  console.log('from:', from)
-})
+// router.beforeEach(async (to, from) => {
+//   if (!isLogin() && to.name != 'auth-login') {
+//     return { name: 'auth-login' }
+//   }
+//   console.log('to:', to)
+//   console.log('from:', from)
+// })
 
 export default router
