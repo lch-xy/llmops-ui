@@ -1,4 +1,54 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { ref } from 'vue'
+import { post } from '@/utils/request.ts'
+import { Message } from '@arco-design/web-vue'
+
+// 定义交互所需要的数据
+const query = ref('')
+const messages = ref([])
+const isLoading = ref(false)
+
+function clearMessages() {
+  messages.value = []
+}
+
+async function send() {
+  if (!query.value) {
+    Message.error('用户提问不能为空')
+    return
+  }
+
+  if (isLoading.value) {
+    Message.warning('请等待上一条消息回复完成')
+    return
+  }
+
+  // 提取用户输入
+  const humanQuery = query.value
+  messages.value.push({
+    role: 'human',
+    content: humanQuery,
+  })
+
+  // 清空输入框
+  query.value = ''
+
+  // 发起api请求
+  isLoading.value = true
+  const response = await post('/apps/107bd8f0-31d0-4ac8-8e6f-13a0c551c554/debug', {
+    body: { query: humanQuery },
+  })
+
+  const content = response.data.content
+
+  messages.value.push({
+    role: 'ai',
+    content: content,
+  })
+
+  isLoading.value = false
+}
+</script>
 
 <template>
   <!-- 最外层容器，内容撑满整个屏幕 -->
@@ -30,41 +80,55 @@
         <!-- 调试对话界面 -->
         <div class="h-full min-h-0 px-6 py-7 overflow-x-hidden overflow-y-scroll scrollbar-w-none">
           <!-- 人了消息 -->
-          <div class="flex flex-row gap-2 mb-6">
+          <div class="flex flex-row gap-2 mb-6" v-for="message in messages" :key="message.content">
             <!-- 头像 -->
-            <a-avatar :style="{ backgroundColor: '#3370ff' }" class="flex-shrink-0" :size="30">
+            <a-avatar
+              v-if="message.role === 'human'"
+              :style="{ backgroundColor: '#3370ff' }"
+              class="flex-shrink-0"
+              :size="30"
+            >
+              <icon-apps />
+            </a-avatar>
+            <a-avatar
+              v-else
+              :style="{ backgroundColor: '#00d0b6' }"
+              class="flex-shrink-0"
+              :size="30"
+            >
               <icon-apps />
             </a-avatar>
             <!-- 实际消息 -->
             <div class="flex flex-col gap-2">
-              <div class="font-semibold text-gray-700">木小可</div>
+              <div class="font-semibold text-gray-700">
+                {{ message.role === 'human' ? '用户' : 'GPT聊天机器人' }}
+              </div>
               <div
+                v-if="message.role === 'human'"
                 class="max-w-max bg-blue-100 text-gray-900 border border-gray-200 px-4 py-3 rounded-2xl leading-5"
               >
-                能详细的叫下LLM是什么吗？能详细的叫下LLM是什么吗？
-                能详细的叫下LLM是什么吗？能详细的叫下LLM是什么吗？能详细的叫下LLM是什么吗？能详细的叫下LLM是什么吗？能详细的叫下LLM是什么吗？
+                {{ message.content }}
               </div>
-            </div>
-          </div>
-          <!-- AI消息 -->
-          <div class="flex flex-row gap-2 mb-6">
-            <!-- 头像 -->
-            <a-avatar :style="{ backgroundColor: '#00d0b6' }" class="flex-shrink-0" :size="30">
-              <icon-apps />
-            </a-avatar>
-            <!-- 实际消息 -->
-            <div class="flex flex-col gap-2">
-              <div class="font-semibold text-gray-700">GPT聊天机器人</div>
               <div
+                v-else
                 class="max-w-max bg-gray-100 text-gray-900 border border-gray-200 px-4 py-3 rounded-2xl leading-5"
               >
-                LLM 是个牛逼的东西。LLM 是个牛逼的东西。LLM 是个牛逼的东西。LLM 是个牛逼的东西。LLM
-                是个牛逼的东西。LLM 是个牛逼的东西。LLM 是个牛逼的东西。
+                {{ message.content }}
               </div>
             </div>
           </div>
+          <!-- 没有任何数据时 -->
+          <div
+            v-if="!messages.length"
+            class="mt-[200px] flex flex-col items-center justify-center gap-2"
+          >
+            <a-avatar :size="70" shape="square" :style="{ backgroundColor: '#00d0b6' }">
+              <icon-apps />
+            </a-avatar>
+            <div class="text-2xl font-semibold text-gray-900">GPT聊天机器人</div>
+          </div>
           <!-- AI加载状态 -->
-          <div class="flex flex-row gap-2 mb-6">
+          <div v-if="isLoading" class="flex flex-row gap-2 mb-6">
             <!-- 头像 -->
             <a-avatar :style="{ backgroundColor: '#00d0b6' }" class="flex-shrink-0" :size="30">
               <icon-apps />
@@ -85,7 +149,7 @@
           <!-- 顶部输入框 -->
           <div class="px-6 flex items-center gap-4">
             <!-- 清除按钮 -->
-            <a-button class="flex-shrink-0" type="text" shape="circle">
+            <a-button class="flex-shrink-0" type="text" shape="circle" @click="clearMessages">
               <template #icon>
                 <icon-empty size="16" :style="{ color: '#374151' }" />
               </template>
@@ -94,13 +158,13 @@
             <div
               class="h-[50px] flex items-center gap-2 px-4 flex-1 border border-gray-200 rounded-full"
             >
-              <input type="text" class="flex-1 outline-0" />
+              <input type="text" class="flex-1 outline-0" v-model="query" @keyup.enter="send" />
               <a-button type="text" shape="circle">
                 <template #icon>
                   <icon-plus-circle size="16" :style="{ color: '#374151' }" />
                 </template>
               </a-button>
-              <a-button type="text" shape="circle">
+              <a-button type="text" shape="circle" @click="send">
                 <template #icon>
                   <icon-send size="16" :style="{ color: '#374151' }" />
                 </template>
