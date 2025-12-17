@@ -3,7 +3,8 @@
 // 3.我们经常使用get和post，需要对着两个方法进行封装
 // 4.每次获取数据都要使用response.json()才可以获取数据，需要封装
 
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, httpCode } from '@/config'
+import { Message } from '@arco-design/web-vue'
 
 // 接口超时，100s
 const TIME_OUT = 100 * 1000
@@ -72,10 +73,17 @@ const baseFetch = <T>(url: string, fetchOptions: FetchOptionType): Promise<T> =>
     new Promise((resolve, reject) => {
       globalThis
         .fetch(urlWithPrefix, options as RequestInit)
-        .then((res) => {
-          resolve(res.json())
+        .then(async (res) => {
+          const json = await res.json()
+          if (json.code == httpCode.SUCCESS) {
+            resolve(json)
+          } else {
+            Message.error(json.message)
+            reject(new Error(json.message))
+          }
         })
         .catch((error) => {
+          Message.error(error.message)
           reject(error)
         })
     }),

@@ -1,50 +1,51 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { post } from '@/utils/request.ts'
 import { Message } from '@arco-design/web-vue'
+import { debugApp } from '@/services/app.ts'
+import { useRoute } from 'vue-router'
 
 // 定义交互所需要的数据
 const query = ref('')
 const messages = ref([])
 const isLoading = ref(false)
+const route = useRoute()
 
-function clearMessages() {
+const clearMessages = () => {
   messages.value = []
 }
 
-async function send() {
+const send = async () => {
   if (!query.value) {
     Message.error('用户提问不能为空')
     return
   }
-
   if (isLoading.value) {
     Message.warning('请等待上一条消息回复完成')
     return
   }
 
-  // 提取用户输入
-  const humanQuery = query.value
-  messages.value.push({
-    role: 'human',
-    content: humanQuery,
-  })
+  try {
+    // 提取用户输入
+    const humanQuery = query.value
+    messages.value.push({
+      role: 'human',
+      content: humanQuery,
+    })
+    // 清空输入框
+    query.value = ''
+    isLoading.value = true
 
-  // 清空输入框
-  query.value = ''
+    // 发起api请求
+    const response = await debugApp(route.params.app_id as string, humanQuery)
+    const content = response.data.content
 
-  // 发起api请求
-  isLoading.value = true
-  const response = await post('/apps/107bd8f0-31d0-4ac8-8e6f-13a0c551c554/debug', {
-    body: { query: humanQuery },
-  })
-
-  const content = response.data.content
-
-  messages.value.push({
-    role: 'ai',
-    content: content,
-  })
+    messages.value.push({
+      role: 'ai',
+      content: content,
+    })
+  } finally {
+    isLoading.value = false
+  }
 
   isLoading.value = false
 }
